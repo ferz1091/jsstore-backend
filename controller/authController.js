@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
 const Role = require('../models/Role');
 const User = require('../models/User');
-// const Product = require('../models/Product');
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const {secret, allowQuery} = require('../config');

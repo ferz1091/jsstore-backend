@@ -30,7 +30,11 @@ function defineProductType (type) {
 class ProductController {
     async addProduct (req, res) {
         try {
-            const {type, prod} = req.body;
+            const body = JSON.parse(req.body.product);
+            const {type, prod, title} = body;
+            prod.images = req.files.map((file, index) => {
+                return {path: file.destination + file.filename, title: index === title ? true : false}
+            })
             if (type < 1 || type > 6) {
                 return res.status(400).json({message: 'Invalid product type'})
             }

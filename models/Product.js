@@ -3,7 +3,11 @@ const { Schema, model } = require('mongoose');
 const Size = new Schema({
     size: {type: String, required: true},
     amount: {type: Number, required: true}
-}, {id: false})
+}, {id: false});
+const Image = new Schema({
+    path: {type: String, required: true},
+    title: Boolean
+})
 
 const Product = new Schema({
     name: {type: String, required: true},
@@ -14,7 +18,8 @@ const Product = new Schema({
     isSale: {type: {value: {type: Number, required: true}, flag: {type: Boolean, require: true}}, required: true},
     color: {type: String, required: true},
     date: {type: Date, required: true},
-    description: String
+    description: String,
+    images: {type: [Image], required: true}
 })
 
 module.exports = {
