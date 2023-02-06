@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const Order = require('../models/Order');
 const {allowQuery} = require('../config');
 
 function defineProductType (type) {
@@ -98,6 +99,41 @@ class ProductController {
             delete productToUpdate._id;
             await instance.replaceOne({id}, productToUpdate);
             return res.status(400).json({ message: 'Product has updated' })
+        } catch (e) {
+            console.log(e);
+            return res.status(400).json({message: 'Put error'})
+        }
+    }
+    async createOrder(req, res) {
+        try {
+            const { products, username } = req.body;
+            let value = 0;
+            for (let product of products) {
+                const instance = defineProductType(Number(product.type));
+                const prod = await instance.findOne({ _id: product._id });
+                if (!prod) {
+                    return res.status(400).json({ message: 'Product not found' });
+                }
+                if (!prod.amount.some(item => item.size === product.size && item.amount >= product.amount)) {
+                    return res.status(400).json({ message: 'The product is out of stock' })
+                }
+                if (prod.isSale.flag) {
+                    value += prod.isSale.value * product.amount;
+                } else {
+                    value += prod.value * product.amount;
+                }
+            }
+            const order = new Order({ products, username, value, date: new Date(), canceled: false, done: false });
+            order.save();
+            for (let product of products) {
+                const instance = defineProductType(Number(product.type));
+                await instance.updateOne(
+                    {_id: product._id}, 
+                    {$inc: {"amount.$[elem].amount": product.amount - (2 * product.amount)}},
+                    {arrayFilters: [{"elem.size": {$eq: product.size}}]}
+                )
+            }
+            return res.status(200).json({ message: 'Order has created' })
         } catch (e) {
             console.log(e);
             return res.status(400).json({message: 'Put error'})
