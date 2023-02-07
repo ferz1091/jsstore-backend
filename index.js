@@ -3,6 +3,7 @@ const cors = require('cors');
 const authRouter = require('./routes/authRoutes');
 const productRouter = require('./routes/productRoutes');
 const orderRouter = require('./routes/orderRoutes');
+const usersRouter = require('./routes/usersRoutes');
 const mongoose = require('mongoose');
 const path = require('path');
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/auth', authRouter);
 app.use('/product', productRouter);
 app.use('/order', orderRouter);
+app.use('/users', usersRouter);
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
 const start = async () => {

@@ -46,6 +46,10 @@ class OrderController {
             if (flag.canceled && flag.done) {
                 return res.status(400).json({message: 'Invalid flag'});
             }
+            const order = await Order.findOne({_id});
+            if (!order) {
+                return res.status(400).json({message: 'Order did not found'});
+            }
             await Order.updateOne(
                 {_id},
                 {$set: {
@@ -63,8 +67,12 @@ class OrderController {
     async deleteOrder(req, res) {
         try {
             const {_id} = req.body;
+            const order = await Order.findOne({_id});
+            if (!order) {
+                return res.status(400).json({message: 'Order did not find'});
+            }
             await Order.findOneAndDelete({_id});
-            return res.status(200).json({message: 'Order has deleted'})
+            return res.status(200).json({message: 'Order has deleted'});
         } catch (e) {
             console.log(e);
             return res.status(400).json({message: 'Delete error', error: e});

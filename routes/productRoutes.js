@@ -5,8 +5,8 @@ const roleMiddleware = require('../middleware/roleMiddleware');
 const fileMiddleware = require('../middleware/fileMiddleware');
 
 router.get('/', productController.getProduct);
-router.post('/add', [roleMiddleware(['ADMIN']), fileMiddleware()], productController.addProduct);
-router.delete('/delete', roleMiddleware(['ADMIN']), productController.deleteProduct);
-router.put('/update', roleMiddleware(['ADMIN']), productController.updateProduct);
+router.post('/add', [roleMiddleware(['ADMIN', 'OWNER']), fileMiddleware()], productController.addProduct);
+router.delete('/delete', roleMiddleware(['ADMIN', 'OWNER']), productController.deleteProduct);
+router.put('/update', roleMiddleware(['ADMIN', 'OWNER']), productController.updateProduct);
 
 module.exports = router;

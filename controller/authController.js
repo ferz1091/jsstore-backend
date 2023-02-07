@@ -52,24 +52,6 @@ class AuthController {
             return res.status(400).json({message: error ? error : 'Login error'})
         }
     }
-    async users (req, res) {
-        try {
-            const query = req.query;
-            let page = 1;
-            if (!Object.keys(query).every(q => allowQuery.users.some(a => a === q))) {
-                return res.status(400).json({message: 'Wrong query parameters!'})
-            }
-            if (query.page && query.page < 1) {
-                return res.status(400).json({message: 'Page must be greater than 1'})
-            } else {
-                page = query.page;
-            }
-            const users = await User.find({}, {}, {skip: (page - 1) * 20, limit: 20});
-            return res.status(200).json(users);
-        } catch (e) {
-            res.status(400).json({message: 'GET error'})
-        }
-    }
 }
 
 module.exports = new AuthController();
