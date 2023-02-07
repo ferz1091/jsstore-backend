@@ -12,7 +12,8 @@ const Order = new Schema({
         ], required: true},
     value: {type: Number, required: true},
     username: {type: String, required: true},
-    date: {type: Date, required: true},
+    order_date: {type: Date, required: true},
+    status_date: Date | null,
     done: {type: Boolean, required: true},
     canceled: {type: Boolean, required: true}
 })
