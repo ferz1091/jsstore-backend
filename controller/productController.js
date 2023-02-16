@@ -1,5 +1,6 @@
 const {allowQuery} = require('../config');
 const defineProductType = require('../tools/defineProductType');
+const fs = require('fs');
 class ProductController {
     async addProduct (req, res) {
         try {
@@ -17,6 +18,9 @@ class ProductController {
             return res.status(200).json({message: 'DONE'})
         } catch (e) {
             console.log(e);
+            req.files.forEach(file => {
+                fs.rm(`./images/${file.filename}`)
+            })
             return res.status(400).json({message: 'Post error'})
         }
     }
@@ -51,7 +55,10 @@ class ProductController {
                 return res.status(400).json({message: 'Type or id is undefined'})
             }
             const instance = defineProductType(Number(type));
-            await instance.findOneAndDelete({id});
+            const prod = await instance.findOneAndDelete({id});
+            prod.images.forEach(image => fs.rm(`./${image.path}`, (err) => {
+                if (err) console.log(err)
+            }));
             return res.status(200).json({message: 'Product has deleted'});
         } catch (e) {
             console.log(e);
