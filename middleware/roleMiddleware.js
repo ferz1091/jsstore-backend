@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const {secret} = require('../config');
+const tokenService = require('../service/tokenService');
 
 module.exports = function (roles) {
     return function (req, res, next) {
@@ -9,9 +9,14 @@ module.exports = function (roles) {
         try {
             const token = req.headers.authorization.split(' ')[1];
             if (!token) {
-                return res.status(403).json({ message: 'User is not authorized' })
+                return res.status(401).json({ message: 'User is not authorized' })
             }
-            const {roles: userRoles} = jwt.verify(token, secret);
+            const userData = tokenService.validateAccessToken(token);
+            if (!userData) {
+                return res.status(401).json({ message: 'User is not authorized' })
+            }
+            req.user = userData;
+            const { roles: userRoles } = jwt.verify(token, 'secret223KeY');
             let hasRole = false;
             userRoles.forEach(role => {
                 if (roles.includes(role)) {
@@ -23,7 +28,7 @@ module.exports = function (roles) {
             }
             next();
         } catch (e) {
-            return res.status(400).json({ message: 'User is not authorized' })
+            return res.status(401).json({ message: 'User is not authorized' })
         }
     }
 }

@@ -1,17 +1,5 @@
-const bcrypt = require('bcryptjs');
-const Role = require('../models/Role');
-const User = require('../models/User');
 const { validationResult } = require('express-validator');
-const jwt = require('jsonwebtoken');
-const {secret, allowQuery} = require('../config');
-
-const generateAccessToken = (id, roles) => {
-    const payload = {
-        id, 
-        roles
-    }
-    return jwt.sign(payload, secret, {expiresIn: '24h'})
-}
+const userService = require('../service/userService');
 
 class AuthController {
     async registration (req, res) {
@@ -20,36 +8,56 @@ class AuthController {
             if (!errors.isEmpty()) {
                 return res.status(400).json({message: 'Registration error', errors: errors.errors})
             }
-            const {username, password} = req.body;
-            const candidate = await User.findOne({username});
-            if (candidate) {
-                return res.status(400).json({ message: 'User with the same name already exists'})
-            }
-            const hashPassword = bcrypt.hashSync(password, 7);
-            const userRole = await Role.findOne({value: 'USER'});
-            const user = new User({username, password: hashPassword, roles: [userRole.value]});
-            await user.save();
-            return res.json({message: 'User has been registered'})
-        } catch (e) {
-            return res.status(400).json({message: 'Registration error'})
-        }
-    }
-    async login (req, res) {
-        try {
-            const { username, password } = req.body;
-            const user = await User.findOne({username});
-            if (!user) {
-                return res.status(400).json({message: `User ${username} did not find`})
-            }
-            const validPassword = bcrypt.compareSync(password, user.password);
-            if (!validPassword) {
-                return res.status(400).json({message: 'Wrong username or password'})
-            }
-            const token = generateAccessToken(user._id, user.roles);
-            return res.json({token})
+            const {email, password} = req.body;
+            const userData = await userService.registration(email, password);
+            res.cookie('refreshToken', userData.refreshToken, {maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true})
+            return res.json(userData);
         } catch (e) {
             console.log(e);
-            return res.status(400).json({message: error ? error : 'Login error'})
+            return res.status(400).json({message: e.message})
+        }
+    }
+    async login(req, res) {
+        try {
+            const { email, password } = req.body;
+            const userData = await userService.login(email, password, req.headers['user-agent']);
+            res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'none', secure: true })
+            return res.json(userData);
+        } catch (e) {
+            console.log(e);
+            return res.status(400).json({message: e.message});
+        }
+    }
+    async logout(req, res) {
+        try {
+            const {refreshToken} = req.cookies;
+            const token = await userService.logout(refreshToken);
+            res.clearCookie('refreshToken', {sameSite: 'none', secure: true});
+            return res.status(200).json({token});
+        } catch (e) {
+            console.log(e);
+            return res.status(400).json({message: e.message})
+        }
+    }
+    async refresh(req, res) {
+        try {
+            const {refreshToken} = req.cookies;
+            const userData = await userService.refresh(refreshToken);
+            res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+            return res.json(userData);
+        } catch (e) {
+            console.log(e);
+            return res.status(400).json({message: e.message})
+        }
+    }
+    async activate(req, res) {
+        try {
+            const activationLink = req.params.link;
+            await userService.activate(activationLink);
+            return res.redirect('http://testssdsds.net');
+        } catch (e) {
+            console.log(e);
+            return res.status(400).json({message: e.message});
         }
     }
 }
