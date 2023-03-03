@@ -1,5 +1,4 @@
-const {allowQuery} = require('../config');
-const defineProductType = require('../tools/defineProductType');
+const Product = require('../models/Product');
 const fs = require('fs');
 class ProductController {
     async addProduct (req, res) {
@@ -9,43 +8,48 @@ class ProductController {
             prod.images = req.files.map((file, index) => {
                 return {path: file.destination + file.filename, title: index === title ? true : false}
             })
-            if (type < 1 || type > 6) {
-                return res.status(400).json({message: 'Invalid product type'})
+            if (type !== 'men' && type !== 'women') {
+                return res.status(400).json({message: 'Invalid product type'});
             }
-            const instance = defineProductType(Number(type));
-            const product = new instance(prod);
+            const product = new Product[type](prod);
             await product.save();
-            return res.status(200).json({message: 'DONE'})
+            return res.status(200).json({message: 'DONE'});
         } catch (e) {
             console.log(e);
             req.files.forEach(file => {
-                fs.rm(`./images/${file.filename}`)
+                fs.rm(`./images/${file.filename}`);
             })
-            return res.status(400).json({message: 'Post error'})
+            return res.status(400).json({message: 'Post error'});
         }
     }
-    async getProduct (req, res) {
+    async getProducts (req, res) {
         try {
-            const query = req.query;
+            const {gender, category, currentPage, sort} = req.query;
             let page = 1;
-            if (!query.type) {
-                return res.status(400).json({message: 'Must contain query TYPE'})
+            if (!gender || !category) {
+                return res.status(400).send({error: 'Must contain query GENDER and CATEGORY'});
             }
-            if (!Object.keys(query).every(q => allowQuery.products.some(a => a === q))) {
-                return res.status(400).json({ message: 'Wrong query parameters!' })
+            if (gender !== 'men' && gender !== 'women') {
+                return res.status(400).send({error: 'Invalid gender query'});
             }
-            if (query.page && query.page < 1) {
-                return res.status(400).json({ message: 'Page must be greater than 1' })
-            } else {
-                page = query.page;
+            if (currentPage && currentPage < 1) {
+                return res.status(400).send({error: 'Page must be greater than 1' });
+            } else if (currentPage) {
+                page = currentPage;
             }
-            const instance = defineProductType(Number(query.type));
-            const products = await instance.find({}, {}, {skip: (page - 1) * 20, limit: 20 });
-            const totalCount = await instance.countDocuments();
-            return res.status(200).json({totalCount, data: products});
+            const instance = Product[gender];
+            const sortParam = sort === 'rating' ? {rating: -1} : sort === 'cheap' ? {value: 1} : {value: -1}; 
+            const data = await instance.aggregate([
+                { $match: { category: category } },
+                { $sort: sortParam },
+                { $skip: (page - 1) * 20 },
+                { $limit: 20 }
+            ]);
+            const totalCount = await instance.countDocuments({category});
+            return res.status(200).send({totalCount, data, totalPages: Math.ceil(totalCount / 20), page: Number(page)});
         } catch (e) {
             console.log(e);
-            return res.status(400).json({message: 'Get error'})
+            return res.status(400).send({error: e.message});
         }
     }
     async deleteProduct(req, res) {
@@ -81,6 +85,55 @@ class ProductController {
         } catch (e) {
             console.log(e);
             return res.status(400).json({message: 'Put error'})
+        }
+    }
+    async getFilterStats(req, res) {
+        try {
+            const {gender, category} = req.query;
+            if (!gender || !category) {
+                return res.status(400).send({ error: "Must contain query GENDER and CATEGORY" });
+            }
+            if (gender !== 'men' && gender !== 'women') {
+                return res.status(400).send({ error: 'Invalid gender query' });
+            }
+            const instance = Product[gender];
+            const typeStats = await instance.aggregate([
+                {
+                    $match: { category }
+                },
+                {
+                    $group: {
+                        _id: { type: "$type" },
+                        count: { $sum: 1 }
+                    }
+                },
+                {
+                    $sort: {  "_id.type": 1 }
+                }
+            ]);
+            const brandStats = await instance.aggregate([
+                {
+                    $match: { category }
+                },
+                {
+                    $group: {
+                        _id: { brand: "$brand" },
+                        count: { $sum: 1 }
+                    }
+                },
+                {
+                    $sort: { "_id.brand": 1 }
+                }
+            ]);
+            const valueRange = await instance.aggregate([
+                { $match: { category } },
+                { $group: { _id: null, min: { $min: "$value" }, max: { $max: "$value" } } },
+                { $project: { _id: 0, min: 1, max: 1 } }
+            ]);
+            res.status(200).send({typeStats, brandStats, valueRange});
+        } catch (e) {
+            console.log(e);
+            res.status(400).send({error: e.message});
         }
     }
 }

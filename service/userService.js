@@ -7,7 +7,7 @@ const tokenService = require('./tokenService');
 const UserDto = require('../dto/user-dto');
 
 class UserService {
-    async registration(email, password) {
+    async registration(email, password, phone, user_agent) {
         const candidate_email = await User.findOne({ email });
         if (candidate_email) {
             throw new Error('User with the same email already exists');
@@ -15,29 +15,35 @@ class UserService {
         const hashPassword = bcrypt.hashSync(password, 7);
         const userRole = await Role.findOne({ value: 'USER' });
         const activationLink = uuid.v4();
-        const user = new User({ email, password: hashPassword, roles: [userRole.value], activationLink });
+        const user = new User({ email, password: hashPassword, phone, roles: [userRole.value], activationLink });
         await mailService.sendActivationLink(email, `${process.env.API_URL}/auth/activate/${activationLink}`);
         const userDto = new UserDto(user);
         const tokens = tokenService.generateTokens({...userDto});
-        await tokenService.saveToken(userDto.id, tokens.refreshToken);
+        await tokenService.saveToken(userDto.id, tokens.refreshToken, user_agent);
         await user.save();
+        userDto.phone = phone;
         return { 
             ...tokens,
             user: userDto
         }
     }
-    async login(email, password, user_agent) {
+    async login(email, password, isRemember, user_agent) {
         const user = await User.findOne({email});
         if (!user) {
-            throw new Error('User with current email wasn\'t found');
+            throw new Error('Invalid mail or password');
         }
         const isPassEquals = await bcrypt.compare(password, user.password);
         if (!isPassEquals) {
-            throw new Error('Incorrect password')
+            throw new Error('Invalid mail or password')
         }
         const userDto = new UserDto(user);
         const tokens = tokenService.generateTokens({ ...userDto });
-        await tokenService.saveToken(userDto.id, tokens.refreshToken, user_agent);
+        if (!isRemember) {
+            tokens.refreshToken = null;
+        } else {
+            await tokenService.saveToken(userDto.id, tokens.refreshToken, user_agent);
+        }
+        userDto.phone = user.phone;
         return {
             ...tokens,
             user: userDto
