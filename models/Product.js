@@ -24,13 +24,13 @@ const Product = new Schema({
     category: {type: String, required: true},
     amount: {type: [Size], required: true},
     value: {type: Number, required: true},
-    isSale: {type: {value: {type: Number, required: true}, flag: {type: Boolean, required: true}}, required: true, _id: false},
+    isSale: {type: {oldValue: {type: Number, required: true}, flag: {type: Boolean, required: true}}, required: true, _id: false},
     color: {type: {value: {type: String, required: true}, rgb: {type: [Color]}}, required: true, _id: false},
     date: {type: Date, required: true},
     description: String,
     properties: [String],
     images: {type: [Image], required: true},
-    markers: {type: [String]}
+    markers: {type: [String], required: true}
 })
 
 module.exports = {

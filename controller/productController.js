@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const productService = require('../service/productService');
 const fs = require('fs');
 class ProductController {
     async addProduct (req, res) {
@@ -24,7 +25,7 @@ class ProductController {
     }
     async getProducts (req, res) {
         try {
-            const {gender, category, currentPage, sort} = req.query;
+            const {gender, category, currentPage, sort, brands, types} = req.query;
             let page = 1;
             if (!gender || !category) {
                 return res.status(400).send({error: 'Must contain query GENDER and CATEGORY'});
@@ -37,15 +38,8 @@ class ProductController {
             } else if (currentPage) {
                 page = currentPage;
             }
-            const instance = Product[gender];
-            const sortParam = sort === 'rating' ? {rating: -1} : sort === 'cheap' ? {value: 1} : {value: -1}; 
-            const data = await instance.aggregate([
-                { $match: { category: category } },
-                { $sort: sortParam },
-                { $skip: (page - 1) * 20 },
-                { $limit: 20 }
-            ]);
-            const totalCount = await instance.countDocuments({category});
+            const sortParam = sort === 'rating' ? {rating: -1} : sort === 'cheap' ? {value: 1} : {value: -1};
+            const {data, totalCount} = await productService.getProducts(gender, category, brands, types, sortParam, page);
             return res.status(200).send({totalCount, data, totalPages: Math.ceil(totalCount / 20), page: Number(page)});
         } catch (e) {
             console.log(e);
@@ -89,47 +83,14 @@ class ProductController {
     }
     async getFilterStats(req, res) {
         try {
-            const {gender, category} = req.query;
+            const {gender, category, brands, types} = req.query;
             if (!gender || !category) {
                 return res.status(400).send({ error: "Must contain query GENDER and CATEGORY" });
             }
             if (gender !== 'men' && gender !== 'women') {
                 return res.status(400).send({ error: 'Invalid gender query' });
             }
-            const instance = Product[gender];
-            const typeStats = await instance.aggregate([
-                {
-                    $match: { category }
-                },
-                {
-                    $group: {
-                        _id: { type: "$type" },
-                        count: { $sum: 1 }
-                    }
-                },
-                {
-                    $sort: {  "_id.type": 1 }
-                }
-            ]);
-            const brandStats = await instance.aggregate([
-                {
-                    $match: { category }
-                },
-                {
-                    $group: {
-                        _id: { brand: "$brand" },
-                        count: { $sum: 1 }
-                    }
-                },
-                {
-                    $sort: { "_id.brand": 1 }
-                }
-            ]);
-            const valueRange = await instance.aggregate([
-                { $match: { category } },
-                { $group: { _id: null, min: { $min: "$value" }, max: { $max: "$value" } } },
-                { $project: { _id: 0, min: 1, max: 1 } }
-            ]);
+            const {brandStats, typeStats, valueRange} = await productService.createFilterStats(gender, category, brands, types);
             res.status(200).send({typeStats, brandStats, valueRange});
         } catch (e) {
             console.log(e);
