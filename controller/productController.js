@@ -25,7 +25,7 @@ class ProductController {
     }
     async getProducts (req, res) {
         try {
-            const {gender, category, currentPage, sort, brands, types} = req.query;
+            const {gender, category, currentPage, sort, brands, types, range} = req.query;
             let page = 1;
             if (!gender || !category) {
                 return res.status(400).send({error: 'Must contain query GENDER and CATEGORY'});
@@ -39,7 +39,7 @@ class ProductController {
                 page = currentPage;
             }
             const sortParam = sort === 'rating' ? {rating: -1} : sort === 'cheap' ? {value: 1} : {value: -1};
-            const {data, totalCount} = await productService.getProducts(gender, category, brands, types, sortParam, page);
+            const {data, totalCount} = await productService.getProducts(gender, category, brands, types, sortParam, page, range);
             return res.status(200).send({totalCount, data, totalPages: Math.ceil(totalCount / 20), page: Number(page)});
         } catch (e) {
             console.log(e);
@@ -83,15 +83,37 @@ class ProductController {
     }
     async getFilterStats(req, res) {
         try {
-            const {gender, category, brands, types} = req.query;
-            if (!gender || !category) {
-                return res.status(400).send({ error: "Must contain query GENDER and CATEGORY" });
+            const {gender, category, brands, types, sale, categoryFilters, range} = req.query;
+            if (!gender) {
+                return res.status(400).send({ error: "Must contain query GENDER" });
             }
             if (gender !== 'men' && gender !== 'women') {
                 return res.status(400).send({ error: 'Invalid gender query' });
             }
-            const {brandStats, typeStats, valueRange} = await productService.createFilterStats(gender, category, brands, types);
-            res.status(200).send({typeStats, brandStats, valueRange});
+            const { brandStats, typeStats, valueRange, categoryStats } = await productService.createFilterStats(gender, category, brands, types, sale, categoryFilters, range);
+            const filters = {typeStats, brandStats, valueRange};
+            if (categoryStats) filters.categoryStats = categoryStats;
+            res.status(200).send(filters);
+        } catch (e) {
+            console.log(e);
+            res.status(400).send({error: e.message});
+        }
+    }
+    async getSale(req, res) {
+        try {
+            const {gender, currentPage, sort, brands, types, categoryFilters, range} = req.query;
+            let page = 1;
+            if (gender && gender !== 'men' && gender !== 'women') {
+                return res.status(400).send({ error: 'Invalid gender query' });
+            }
+            if (currentPage && currentPage < 1) {
+                return res.status(400).send({ error: 'Page must be greater than 1' });
+            } else if (currentPage) {
+                page = currentPage;
+            }
+            const sortParam = sort === 'rating' ? { rating: -1 } : sort === 'cheap' ? { value: 1 } : { value: -1 };
+            const { data, totalCount } = await productService.getSale(gender, page, sortParam, brands, types, categoryFilters, range);
+            return res.status(200).send({totalCount, data, totalPages: Math.ceil(totalCount / 20), page: Number(page)});
         } catch (e) {
             console.log(e);
             res.status(400).send({error: e.message});
