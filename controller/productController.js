@@ -1,4 +1,6 @@
 const Product = require('../models/Product');
+const Rating = require('../models/Rating');
+const User = require('../models/User');
 const productService = require('../service/productService');
 const fs = require('fs');
 class ProductController {
@@ -114,6 +116,263 @@ class ProductController {
             const sortParam = sort === 'rating' ? { rating: -1 } : sort === 'cheap' ? { value: 1 } : { value: -1 };
             const { data, totalCount } = await productService.getSale(gender, page, sortParam, brands, types, categoryFilters, range);
             return res.status(200).send({totalCount, data, totalPages: Math.ceil(totalCount / 20), page: Number(page)});
+        } catch (e) {
+            console.log(e);
+            res.status(400).send({error: e.message});
+        }
+    }
+    async getProductById(req, res) {
+        try {
+            const {gender, id} = req.query;
+            if (!gender || !['men', 'women'].some(item => item === gender)) {
+                throw new Error('Invalid gender');
+            }
+            if (!id || id.length !== 24) {
+                throw new Error('Invalid id');
+            }
+            const prod = await Product[gender].findById(id);
+            res.status(200).send(prod);
+        } catch (e) {
+            console.log(e);
+            res.status(400).send({error: e.message});
+        }
+    }
+    async getProductComments(req, res) {
+        try {
+            const {gender, id, page, user, sort} = req.query;
+            let currentPage = 1;
+            if (!gender || !['men', 'women'].some(item => item === gender)) {
+                throw new Error('Invalid gender');
+            }
+            if (!id) {
+                throw new Error('Invalid id');
+            }
+            if (page) {
+                currentPage = Number(page);
+            }
+            const prodComments = await Rating[gender].findOne({productId: id});
+            let totalPages = 0;
+            let totalCount = 0;
+            let data = [];
+            let userComment = null;
+            if (prodComments) {
+                totalCount = prodComments.comments.filter(comment => comment.comment).length;
+                totalPages = Math.ceil(prodComments.comments.filter(comment => comment.comment && comment.user !== user).length / 10);
+                const comments = prodComments.comments.filter(comment => comment.comment && comment.user !== user).sort((a, b) => {
+                    if (!sort || sort === 'latest'){
+                        if (new Date(a.date) > new Date(b.date)) {
+                            return -1;
+                        } else {
+                            return 1
+                        }
+                    } else if (sort === 'rating') {
+                        if (a.rating && !b.rating) {
+                            return -1;
+                        } else if (!a.rating && b.rating) {
+                            return 1;
+                        } else if (a.rating && b.rating) {
+                            if (a.rating > b.rating) {
+                                return -1;
+                            } else {
+                                return 1;
+                            }
+                        } else {
+                            return 0;
+                        }
+                    } else if (sort === 'helpful') {
+                        if (a.comment.length > b.comment.length) {
+                            if (a.rating && b.rating) {
+                                return -1;
+                            } else if (!a.rating && b.rating) {
+                                return 1;
+                            } else {
+                                return -1;
+                            }
+                        } else if (a.comment.length < b.comment.length) {
+                            if (a.rating && b.rating) {
+                                return 1;
+                            } else if (a.rating && !b.rating) {
+                                return -1;
+                            } else {
+                                return 1;
+                            }
+                        }
+                    }
+                });
+                data = comments.slice(currentPage === 1 ? 0 : (currentPage - 1) * 10, currentPage * 10);
+                userComment = prodComments.comments.find(comment => comment.user === user);
+            }
+            res.status(200).send({data, totalPages, page: currentPage, totalCount, userComment});
+        } catch (e) {
+            console.log(e)
+            res.status(400).send({ error: e.message });
+        }
+    }
+    async rateProduct(req, res) {
+        try {
+            const {gender, productId, email, comment, rating} = req.body;
+            if (!gender || !['men', 'women'].some(item => item === gender)) {
+                throw new Error('Invalid gender');
+            }
+            if (!comment && !rating) {
+                throw new Error('Nothing to post');
+            }
+            const user = await User.find({email});
+            if (!user) {
+                throw new Error('Email is invalid');
+            }
+            const prod = await Product[gender].findById(productId);
+            if (!prod) {
+                throw new Error('Product not found');
+            }
+            const prodComments = await Rating[gender].findOne({productId});
+            if (prodComments) {
+                if (prodComments.comments.some(comment => comment.user === email)) {
+                    throw new Error('You cannot comment on this product again');
+                } else {
+                    prodComments.comments.push({
+                        user: email,
+                        rating: rating ? rating : null,
+                        comment: comment ? comment : null,
+                        date: new Date(),
+                        answer: null
+                    });
+                    prodComments.save();
+                    if (rating) {
+                        prod.rateAmount += 1;
+                        let rate = 0;
+                        let amount = 0; 
+                        prodComments.comments.forEach(comment => {
+                            if (comment.rating) {
+                                rate += comment.rating;
+                                amount++;
+                            }
+                        });
+                        prod.rating = Number((rate / amount).toFixed([1]));
+                        prod.save();
+                    }
+                }
+            } else {
+                const post = new Rating[gender]({
+                    productId,
+                    comments: [
+                        {
+                            user: email,
+                            rating: rating ? rating : null,
+                            comment: comment ? comment : null,
+                            date: new Date(),
+                            answer: null
+                        }
+                    ]
+                });
+                if (rating) {
+                    prod.rateAmount += 1;
+                    prod.rating = rating;
+                    prod.save();
+                }
+                await post.save();
+            }
+            res.status(200).send({ message: 'Comment has been posted'});
+        } catch (e) {
+            console.log(e);
+            res.status(400).send({ error: e.message });
+        }
+    }
+    async deleteRate(req, res) {
+        try {
+            const {gender, productId, email} = req.body;
+            if (!gender || !productId || !email) {
+                throw new Error('Wrong request');
+            }
+            let prodComments = await Rating[gender].findOne({productId});
+            if (!prodComments) {
+                throw new Error('Invalid product id');
+            }
+            const comment = prodComments.comments.find(comment => comment.user === email);
+            let prod = null;
+            if (comment.rating) {
+                prod = await Product[gender].findById(productId);
+                if (!prod) {
+                    throw new Error('Product not found');
+                }
+                if (prod.rateAmount > 1) {
+                    const updatedRating = Number((((prod.rating * prod.rateAmount) - comment.rating) / (prod.rateAmount - 1)).toFixed([1]));
+                    prod.rating = updatedRating;
+                    prod.rateAmount = prod.rateAmount - 1;
+                } else {
+                    prod.rating = 0;
+                    prod.rateAmount = 0;
+                }
+                prod.save();
+            }
+            prodComments.comments = prodComments.comments.filter(comment => comment.user !== email);
+            prodComments.save();
+            res.status(200).send({message: 'Comment has been deleted'});
+        } catch (e) {
+            console.log(e);
+            res.status(400).send({error: e.message});
+        }
+    }
+    async editRate(req, res) {
+        try {
+            const {gender, productId, email, comment, rating} = req.body;
+            const prodComments = await Rating[gender].findOne({productId});
+            if (!prodComments) {
+                throw new Error('Invalid product ID');
+            }
+            if (!email) {
+                throw new Error('User is not authorized');
+            }
+            if (!comment && !rating) {
+                throw new Error('Nothing to post');
+            }
+            const oldComment = prodComments.comments.find(comment => comment.user === email);
+            prodComments.comments = prodComments.comments.filter(comment => comment.user !== email);
+            prodComments.comments.push({
+                user: email,
+                rating: rating ? rating : null,
+                comment: comment ? comment : null,
+                date: new Date(),
+                answer: null
+            });
+            let prod = await Product[gender].findById(productId);
+            if (!prod) {
+                throw new Error('Product not found');
+            }
+            if (rating) {
+                if (oldComment.rating) {
+                    if (prod.rateAmount > 1) {
+                        const updatedRating = Number(((((prod.rating * prod.rateAmount) - oldComment.rating) + rating) / prod.rateAmount).toFixed([1]));
+                        prod.rating = updatedRating;
+                    } else {
+                        prod.rating = rating;
+                    }
+                } else {
+                    if (!prod.rateAmount) {
+                        prod.rating = rating;
+                        prod.rateAmount = 1;
+                    } else {
+                        const updatedRating = Number((((prod.rating * prod.rateAmount) + rating) / (prod.rateAmount + 1)).toFixed([1]));
+                        prod.rating = updatedRating;
+                        prod.rateAmount = prod.rateAmount + 1;
+                    }
+                }
+                prod.save();
+            } else {
+                if (oldComment.rating) {
+                    if (prod.rateAmount > 1) {
+                        const updatedRating = Number((((prod.rating * prod.rateAmount) - oldComment.rating) / (prod.rateAmount - 1)).toFixed([1]));
+                        prod.rating = updatedRating;
+                        prod.rateAmount = prod.rateAmount - 1;
+                    } else {
+                        prod.rating = 0;
+                        prod.rateAmount = 0;
+                    }
+                    prod.save();
+                }
+            }
+            prodComments.save();
+            res.status(200).send({message: 'Comment has been updated'});
         } catch (e) {
             console.log(e);
             res.status(400).send({error: e.message});

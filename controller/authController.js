@@ -12,7 +12,7 @@ class AuthController {
             const userData = await userService.registration(email, password, phone, req.headers['user-agent']);
             res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'none', secure: true })
             return res.json(userData);
-        } catch (e) {
+        } catch (error) {
             console.log(error);
             return res.status(400).send({error: error.message})
         }

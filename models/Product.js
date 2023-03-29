@@ -30,7 +30,8 @@ const Product = new Schema({
     description: String,
     properties: [String],
     images: {type: [Image], required: true},
-    markers: {type: [String], required: true}
+    markers: {type: [String], required: true},
+    materials: {type: [String], required: true}
 })
 
 module.exports = {
