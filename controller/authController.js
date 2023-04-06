@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const userService = require('../service/userService');
+const isDev = process.env.MODE === 'development' || !process.env.MODE ? true : false;
 
 class AuthController {
     async registration (req, res) {
@@ -10,7 +11,7 @@ class AuthController {
             }
             const {email, password, phone} = req.body;
             const userData = await userService.registration(email, password, phone, req.headers['user-agent']);
-            res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'none', secure: true })
+            res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: isDev ? 'Lax' : 'None', secure: !isDev })
             return res.json(userData);
         } catch (error) {
             console.log(error);
@@ -22,7 +23,7 @@ class AuthController {
             const { email, password, isRemember } = req.body;
             const userData = await userService.login(email, password, isRemember, req.headers['user-agent']);
             if (isRemember) {
-                res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'none', secure: true })
+                res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: isDev ? 'Lax' : 'None', secure: !isDev })
             }
             return res.json(userData);
         } catch (error) {
@@ -33,7 +34,7 @@ class AuthController {
         try {
             const {refreshToken} = req.cookies;
             const token = await userService.logout(refreshToken);
-            res.clearCookie('refreshToken', {sameSite: 'none', secure: true});
+            res.clearCookie('refreshToken', { sameSite: isDev ? 'Lax' : 'None', secure: !isDev });
             return res.status(200).json({token});
         } catch (error) {
             console.log(error);
@@ -44,7 +45,7 @@ class AuthController {
         try {
             const {refreshToken} = req.cookies;
             const userData = await userService.refresh(refreshToken);
-            res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+            res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: isDev ? 'Lax' : 'None', secure: !isDev });
             return res.json(userData);
         } catch (e) {
             console.log(e);

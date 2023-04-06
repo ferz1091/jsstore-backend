@@ -67,7 +67,8 @@ class UserService {
         const tokens = tokenService.generateTokens({...userDto});
         return {
             accessToken: tokens.accessToken,
-            user: userDto
+            user: userDto,
+            refreshToken
         }
     }
     async activate(activationLink) {
