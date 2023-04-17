@@ -27,6 +27,21 @@ class MailService {
             `
         })
     }
+    async sendEmailChangeConfirmationCode(to, code) {
+        await this.transporter.sendMail({
+            from: process.env.SMTP_USER,
+            to,
+            subject: 'Get confirmation code for email change on js-store shop',
+            text: '',
+            html:
+            `
+                <div>
+                    <h1>Enter this code to change email</h1>
+                    <div>${code}</div>
+                </div>
+            `
+        })
+    }
 }
 
 module.exports = new MailService();
