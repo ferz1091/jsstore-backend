@@ -36,5 +36,6 @@ const Product = new Schema({
 
 module.exports = {
     men: model('men', Product),
-    women: model('women', Product)
+    women: model('women', Product),
+    productSchema: Product 
 }

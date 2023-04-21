@@ -378,6 +378,95 @@ class ProductController {
             res.status(400).send({error: e.message});
         }
     }
+    async addToFavorites(req, res) {
+        try {
+            const {id, gender, productId} = req.body;
+            if (!gender || !productId) {
+                throw new Error('Invalid gender or product ID.');
+            }
+            const user = await User.findById(id);
+            if (!user) {
+                throw new Error('User not found.');
+            }
+            if (user.favorites[gender].some(item => item === productId)) {
+                throw new Error('Product already added to favorites.');
+            }
+            if (user.favorites[gender].length > 19) {
+                throw new Error(`You have exceeded the limit of favorites ${gender}'s clothing(max 20 items)`);
+            }
+             user.favorites[gender] = [...user.favorites[gender], productId];
+            user.save();
+            res.status(200).send({
+                message: 'Product has been added.', 
+                user: {
+                    name: user.name,
+                    surname: user.surname,
+                    phone: user.phone,
+                    email: user.email,
+                    id: user._id,
+                    isActivated: user.isActivated,
+                    favorites: user.favorites
+                }
+            });
+        } catch (e) {
+            res.status(400).send({ error: e.message });
+        }
+    }
+    async removeFromFavorites(req, res) {
+        try {
+            const {id, gender, productId} = req.body;
+            if (!gender || !productId) {
+                throw new Error('Invalid gender or product ID.');
+            }
+            const user = await User.findById(id);
+            if (!user) {
+                throw new Error('User not found.');
+            }
+            if (!user.favorites[gender].some(item => item === productId)) {
+                throw new Error('Product not found in favorites.');
+            }
+            user.favorites[gender] = user.favorites[gender].filter(item => item !== productId);
+            user.save();
+            res.status(200).send({
+                message: 'Product has been deleted from favorites.', 
+                user: {
+                name: user.name,
+                surname: user.surname,
+                phone: user.phone,
+                email: user.email,
+                id: user._id,
+                isActivated: user.isActivated,
+                favorites: user.favorites
+            }
+            });
+        } catch (e) {
+            res.status(400).send({ error: e.message });
+        }
+    }
+    async getUserFavorites(req, res) {
+        try {
+            const {id} = req.query;
+            const user = await User.findById(id);
+            if (!user) {
+                throw new Error('User not found.');
+            }
+            const men = user.favorites.men.length ? await Promise.all(user.favorites.men.map(async (item) => {
+                const product = await Product.men.findById(item);
+                if (product) {
+                    return product;
+                }
+            })) : [];
+            const women = user.favorites.women.length ? await Promise.all(user.favorites.women.map(async (item) => {
+                const product = await Product.women.findById(item);
+                if (product) {
+                    return product;
+                }
+            })) : [];
+            res.status(200).send({men: [...men], women: [...women]});
+        } catch (e) {
+            res.status(400).send({error: e.message})
+        }
+    }
 }
 
 module.exports = new ProductController();

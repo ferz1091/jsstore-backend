@@ -80,7 +80,8 @@ class UsersController {
                 name: user.name, 
                 surname: user.surname, 
                 phone: user.phone, 
-                roles: user.roles
+                roles: user.roles,
+                favorites: user.favorites
             });
         } catch (error) {
             return res.status(400).send({error: error.message});
@@ -156,7 +157,8 @@ class UsersController {
                 phone: user.phone, 
                 email: user.email, 
                 id: user._id, 
-                isActivated: user.isActivated
+                isActivated: user.isActivated,
+                favorites: user.favorites
             });
         } catch (error) {
             return res.status(400).send({ error: error.message });

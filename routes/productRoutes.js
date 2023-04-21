@@ -15,5 +15,8 @@ router.get('/comments', productController.getProductComments);
 router.get('/byid', productController.getProductById);
 router.post('/comment_delete', roleMiddleware(['USER']), productController.deleteRate);
 router.post('/comment_edit', roleMiddleware(['USER']), productController.editRate);
+router.put('/addtofav', roleMiddleware(['USER']), productController.addToFavorites);
+router.put('/removefromfav', roleMiddleware(['USER']), productController.removeFromFavorites);
+router.get('/getfavorites', roleMiddleware(['USER']), productController.getUserFavorites);
 
 module.exports = router;

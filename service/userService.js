@@ -15,7 +15,7 @@ class UserService {
         const hashPassword = bcrypt.hashSync(password, 7);
         const userRole = await Role.findOne({ value: 'USER' });
         const activationLink = await this.generateActivationLink(email);
-        const user = new User({ email, password: hashPassword, phone, roles: [userRole.value], activationLink });
+        const user = new User({ email, password: hashPassword, phone, roles: [userRole.value], activationLink, favorites: {men: [], women: []} });
         const userDto = new UserDto(user);
         const tokens = tokenService.generateTokens({...userDto});
         await tokenService.saveToken(userDto.id, tokens.refreshToken, user_agent);
@@ -23,7 +23,7 @@ class UserService {
         userDto.phone = phone;
         return { 
             ...tokens,
-            user: {...userDto, name: user.name ? user.name : null, surname: user.surname ? user.surname : null, phone: user.phone ? user.phone : null},
+            user: {...userDto, name: user.name ? user.name : null, surname: user.surname ? user.surname : null, phone: user.phone ? user.phone : null, favorites: user.favorites},
         }
     }
     async login(email, password, isRemember, user_agent) {
@@ -45,7 +45,7 @@ class UserService {
         userDto.phone = user.phone;
         return {
             ...tokens,
-            user: {...userDto, name: user.name ? user.name : null, surname: user.surname ? user.surname : null, phone: user.phone ? user.phone : null},
+            user: {...userDto, name: user.name ? user.name : null, surname: user.surname ? user.surname : null, phone: user.phone ? user.phone : null, favorites: user.favorites},
         }
     }
     async logout(refreshToken) {
@@ -66,7 +66,7 @@ class UserService {
         const tokens = tokenService.generateTokens({...userDto});
         return {
             accessToken: tokens.accessToken,
-            user: {...userDto, name: user.name ? user.name : null, surname: user.surname ? user.surname : null, phone: user.phone ? user.phone : null},
+            user: {...userDto, name: user.name ? user.name : null, surname: user.surname ? user.surname : null, phone: user.phone ? user.phone : null, favorites: user.favorites},
             refreshToken
         }
     }
