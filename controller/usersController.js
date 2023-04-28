@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Role = require('../models/Role');
+const Token = require('../models/Token');
 const {allowQuery} = require('../config');
 const uuid = require('uuid');
 const userService = require('../service/userService');
@@ -173,6 +174,65 @@ class UsersController {
             }
             await mailService.sendActivationLink(user.email, `${process.env.API_URL}/auth/activate/${user.activationLink}`);
             return res.status(200).send({message: 'Mail has been sent.'});
+        } catch (error) {
+            return res.status(400).send({ error: error.message });
+        }
+    }
+    async changeUserPassword(req, res) {
+        try {
+            const {id, password, newPassword} = req.body;
+            if (!password || !newPassword) {
+                throw new Error('Invalid passwords.');
+            }
+            if (password === newPassword) {
+                throw new Error('Passwords match.');
+            }
+            const user = await User.findById(id);
+            if (!user) {
+                throw new Error('User not found.');
+            }
+            const isPassEquals = await userService.comparePasswords(password, user.password);
+            if (!isPassEquals) {
+                throw new Error('Invalid password.')
+            }
+            user.password = userService.hashPassword(newPassword);
+            user.save();
+            return res.status(200).send({message: 'Password has been changed.'});
+        } catch (error) {
+            return res.status(400).send({ error: error.message });
+        }
+    }
+    async getUserSessions(req, res) {
+        try {
+            const {id} = req.query;
+            if (!id) {
+                throw new Error('Invalid ID.');
+            }
+            const user = await User.findById(id);
+            if (!user) {
+                throw new Error('User not found.');
+            }
+            const refreshToken = req.cookies.refreshToken;
+            const response = await userService.getSessions(id, refreshToken);
+            return res.status(200).send(response);
+        } catch (error) {
+            return res.status(400).send({ error: error.message });
+        }
+    }
+    async closeSession(req, res) {
+        try {
+            const {sessionId, userId} = req.body;
+            if (!sessionId || !userId) {
+                throw new Error('Invalid IDs.');
+            }
+            const user = await User.findById(userId);
+            if (!user) {
+                throw new Error('User not found.');
+            }
+            await Token.findByIdAndDelete(sessionId);
+            const refreshToken = req.cookies.refreshToken;
+            const response = await userService.getSessions(userId, refreshToken);
+            return res.status(200).send(response);
         } catch (error) {
             return res.status(400).send({ error: error.message });
         }

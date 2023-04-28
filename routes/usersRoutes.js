@@ -11,5 +11,8 @@ router.get('/email_check', roleMiddleware(['USER']), usersController.checkMailAv
 router.put('/edit', roleMiddleware(['USER']), usersController.editUserInfo);
 router.get('/email_change', roleMiddleware(['USER']), usersController.getEmailChangeConfirmationCode);
 router.post('/email_send', roleMiddleware(['USER']), usersController.resendActivationLink);
+router.put('/change_password', roleMiddleware(['USER']), usersController.changeUserPassword);
+router.get('/sessions', roleMiddleware(['USER']), usersController.getUserSessions);
+router.put('/close_session', roleMiddleware(['USER']), usersController.closeSession);
 
 module.exports = router;

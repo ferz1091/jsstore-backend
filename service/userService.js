@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Role = require('../models/Role');
+const Token = require('../models/Token');
 const bcrypt = require('bcryptjs');
 const uuid = require('uuid');
 const mailService = require('./mailService');
@@ -12,7 +13,7 @@ class UserService {
         if (candidate_email) {
             throw new Error('User with the same email already exists');
         }
-        const hashPassword = bcrypt.hashSync(password, 7);
+        const hashPassword = this.hashPassword(password);
         const userRole = await Role.findOne({ value: 'USER' });
         const activationLink = await this.generateActivationLink(email);
         const user = new User({ email, password: hashPassword, phone, roles: [userRole.value], activationLink, favorites: {men: [], women: []} });
@@ -31,7 +32,7 @@ class UserService {
         if (!user) {
             throw new Error('Invalid mail or password');
         }
-        const isPassEquals = await bcrypt.compare(password, user.password);
+        const isPassEquals = await this.comparePasswords(password, user.password);
         if (!isPassEquals) {
             throw new Error('Invalid mail or password')
         }
@@ -91,6 +92,30 @@ class UserService {
             code += Math.floor(Math.random() * 10);
         }
         return code;
+    }
+    hashPassword(password) {
+        return bcrypt.hashSync(password, 7);
+    }
+    async comparePasswords(password, userPassword) {
+        return await bcrypt.compare(password, userPassword);
+    }
+    async getSessions(id, token) {
+        const sessions = await Token.find({ user: id });
+        return sessions.map(session => {
+            const device = session.user_agent.slice(session.user_agent.indexOf('(') + 1, session.user_agent.indexOf(')'));
+            if (session.refreshToken === token) {
+                return {
+                    device,
+                    id: session._id,
+                    current: true
+                }
+            } else {
+                return {
+                    device,
+                    id: session._id,
+                }
+            }
+        })
     }
 }
 
