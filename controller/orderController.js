@@ -1,38 +1,56 @@
 const Order = require('../models/Order');
+const Product = require('../models/Product');
+const mailService = require('../service/mailService');
 
 class OrderController {
     async createOrder(req, res) {
         try {
-            // const { products, username } = req.body;
-            // let value = 0;
-            // for (let product of products) {
-            //     const instance = defineProductType(Number(product.type));
-            //     const prod = await instance.findOne({ _id: product._id });
-            //     if (!prod) {
-            //         return res.status(400).json({ message: 'Product not found' });
-            //     }
-            //     if (!prod.amount.some(item => item.size === product.size && item.amount >= product.amount)) {
-            //         return res.status(400).json({ message: 'The product is out of stock' })
-            //     }
-            //     if (prod.isSale.flag) {
-            //         value += prod.isSale.value * product.amount;
-            //     } else {
-            //         value += prod.value * product.amount;
-            //     }
-            // }
-            // const order = new Order({ products, username, value, order_date: new Date(), status_date: null, canceled: false, done: false });
-            // order.save();
-            // for (let product of products) {
-            //     const instance = defineProductType(Number(product.type));
-            //     await instance.updateOne(
-            //         { _id: product._id },
-            //         { $inc: { "amount.$[elem].amount": product.amount - (2 * product.amount) } },
-            //         { arrayFilters: [{ "elem.size": { $eq: product.size } }] }
-            //     )
-                return res.status(200).json({ message: 'Order has created' })
-            } catch (e) {
-            console.log(e);
-            return res.status(400).json({ message: 'Put error' })
+            const orderPayload = req.body;
+            let quantityIsNotCorrect = false;
+            const refreshedProducts = [];
+            for (const product of orderPayload.products) {
+                const prod = await Product[product.item.gender].findById(product.item._id);
+                const amount = prod.amount.find(size => size.size === product.size);
+                if (!amount || amount && amount.amount < product.amount) {
+                    quantityIsNotCorrect = true;
+                    product.amount = amount.amount;
+                    product.error = `Only ${amount.amount} items available in size ${product.size}`
+                }
+                refreshedProducts.push({...product, item: prod});
+            }
+            if (quantityIsNotCorrect) {
+                return res.status(200).send({products: refreshedProducts, quantityIsNotCorrect})
+            } else {
+                for (const product of orderPayload.products) {
+                    const prod = await Product[product.item.gender].findById(product.item._id);
+                    prod.amount = prod.amount.map(size => {
+                        if (size.size === product.size) {
+                            return {
+                                ...size,
+                                amount: size.amount - product.amount
+                            }
+                        } else {
+                            return size;
+                        }
+                    })
+                    await prod.save();
+                }
+                const order = new Order({
+                    ...orderPayload,
+                    order_date: new Date(),
+                    status_date: null,
+                    sent_date: null,
+                    done: false,
+                    canceled: false,
+                    sent: false
+                });
+                mailService.sendOrderDetails(orderPayload.contactDetails.email, order, refreshedProducts);
+                await order.save();
+                return res.status(200).json({ message: 'Order has been created', id: order._id });
+            }
+        } catch (error) {
+            console.log(error);
+            return res.status(400).send({ message: error.message });
         }
     }
     async changeOrderStatus(req, res) {
