@@ -36,24 +36,9 @@ const Order = new Schema({
     sent_date: Date | null,
     done: {type: Boolean, required: true},
     sent: {type: Boolean, required: true},
-    canceled: {type: Boolean, required: true}
+    canceled: {type: Boolean, required: true},
+    paymentMethod: {type: String, required: true},
+    paid: {type: Boolean, required: true}
 })
-
-// const Order = new Schema({
-//     products: {
-//         type: [
-//             {
-//                 _id: {type: String, required: true},
-//                 gender: {type: String, required: true},
-//                 order: [{size: String, amount: Number}]
-//             }
-//         ], required: true},
-//     value: {type: Number, required: true},
-//     username: {type: String, required: true},
-//     order_date: {type: Date, required: true},
-//     status_date: Date | null,
-//     done: {type: Boolean, required: true},
-//     canceled: {type: Boolean, required: true}
-// })
 
 module.exports = model('Order', Order);

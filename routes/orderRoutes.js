@@ -5,6 +5,8 @@ const roleMiddleware = require('../middleware/roleMiddleware');
 
 router.post('/create', roleMiddleware(['USER']), orderController.createOrder);
 router.put('/status', roleMiddleware(['ADMIN', 'OWNER']), orderController.changeOrderStatus);
-router.delete('/delete', roleMiddleware(['ADMIN', 'OWNER']), orderController.deleteOrder);
+router.get('/user_orders', roleMiddleware(['USER']), orderController.getUserOrders);
+router.get('/products', roleMiddleware(['USER']), orderController.getOrderProducts);
+router.put('/cancel', roleMiddleware(['USER']), orderController.cancelOrder);
 
 module.exports = router;
