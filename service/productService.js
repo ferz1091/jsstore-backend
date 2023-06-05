@@ -152,6 +152,48 @@ class ProductService {
         const valueRange = await instance.aggregate(valueRangeParams);
         return {brandStats, typeStats, valueRange, categoryStats};
     }
+    async createProductArticle(gender, category) {
+        let article;
+        if (gender === 'men') {
+            article = 'A_01';
+        } else if (gender === 'women') {
+            article = 'A_02';
+        }
+        switch (category) {
+            case 'outerwear': {
+                article += '1';
+                break;
+            }
+            case 'tops': {
+                article += '2';
+                break;
+            }
+            case 'bottoms': {
+                article += '3';
+                break;
+            }
+            case 'shoes': {
+                article += '4';
+                break;
+            }
+            case 'sportswear': {
+                article += '5';
+                break;
+            }
+            case 'hats': {
+                article += '6'
+                break;
+            }
+            case 'dresses': {
+                article += '6'
+                break;
+            }
+            default: null;
+        }
+        const prods = await Product[gender].find({category});
+        article += prods.length + 1;
+        return article;
+    }
 }
 
 module.exports = new ProductService();

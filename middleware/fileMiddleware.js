@@ -13,7 +13,7 @@ const multer = require('multer')({
     fileFilter,
     limits: { fileSize: 1000000 }
 });
-const upload = multer.array('files', 4);
+const upload = multer.array('files', 10);
 
 module.exports = function () {
     return function (req, res, next) {

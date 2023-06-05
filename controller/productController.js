@@ -8,15 +8,23 @@ class ProductController {
         try {
             const body = JSON.parse(req.body.product);
             const {type, prod, title} = body;
+            const article = await productService.createProductArticle(type, prod.category);
             prod.images = req.files.map((file, index) => {
                 return {path: file.destination + file.filename, title: index === title ? true : false}
             })
             if (type !== 'men' && type !== 'women') {
                 return res.status(400).json({message: 'Invalid product type'});
             }
-            const product = new Product[type](prod);
+            const product = new Product[type]({
+                ...prod,
+                article,
+                date: new Date(), 
+                isSale: { oldValue: 0, flag: false }, 
+                rating: 0, 
+                rateAmount: 0
+            });
             await product.save();
-            return res.status(200).json({message: 'DONE'});
+            return res.status(200).json({message: 'Product has been added.', link: `/product/${type}/${product._id}`});
         } catch (e) {
             console.log(e);
             req.files.forEach(file => {
