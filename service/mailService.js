@@ -42,6 +42,21 @@ class MailService {
             `
         })
     }
+    async sendRecoveryCode(to, code) {
+        await this.transporter.sendMail({
+            from: process.env.SMTP_USER,
+            to,
+            subject: 'Get recovery code for password change on js-store shop',
+            text: '',
+            html:
+                `
+                <div>
+                    <h1>Enter this code to change password</h1>
+                    <div>${code}</div>
+                </div>
+            `
+        })
+    }
     async sendOrderDetails(to, order, products) {
         await this.transporter.sendMail({
             from: process.env.SMTP_USER,

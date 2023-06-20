@@ -14,6 +14,7 @@ const User = new Schema({
     isActivated: {type: Boolean, default: false},
     activationLink: {type: String},
     emailConfirmationCode: {type: String},
+    recoveryCode: {type: String},
     roles: [{type: String, ref: 'Role'}],
     favorites: {type: Favorites}
 })

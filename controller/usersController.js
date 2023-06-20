@@ -119,8 +119,73 @@ class UsersController {
             const code = await userService.generateEmailConfirmationCode();
             await mailService.sendEmailChangeConfirmationCode(user.email, code);
             user.emailConfirmationCode = code;
-            user.save();
+            await user.save();
             return res.status(200).send({message: 'Confirmation code has been sent.'});
+        } catch (error) {
+            return res.status(400).send({ error: error.message });
+        }
+    }
+    async getForgotPasswordCode(req, res) {
+        try {
+            const {email} = req.query;
+            if (!email) {
+                throw new Error('Invalid email.');
+            }
+            const user = await User.findOne({email});
+            if (!user) {
+                throw new Error('User with this email address not found');
+            }
+            const code = await userService.generateEmailConfirmationCode()
+            await mailService.sendRecoveryCode(email, code);
+            user.recoveryCode = code;
+            await user.save();
+            return res.status(200).send({ message: 'The code has been sent to the specified email'});
+        } catch (error) {
+            return res.status(400).send({ error: error.message });
+        }
+    }
+    async validateRecoveryCode(req, res) {
+        try {
+            const {email, code} = req.query;
+            if (!email || !code) {
+                throw new Error('Invalid email or code.');
+            }
+            const user = await User.findOne({email});
+            if (!user) {
+                throw new Error('User with this email address not found');
+            }
+            if (user.recoveryCode !== code) {
+                throw new Error('Code is not correct.');
+            }
+            return res.status(200).send({status: true});
+        } catch (error) {
+            return res.status(400).send({ error: error.message });
+        }
+    }
+    async changePasswordByCode(req, res) {
+        try {
+            const { email, code, password } = req.body;
+            if (!email) {
+                throw new Error('Invalid email.');
+            }
+            if (!code) {
+                throw new Error('Invalid code.');
+            }
+            if (!password || password.length < 6 || password.length > 20) {
+                throw new Error('Incorrect password');
+            }
+            const user = await User.findOne({ email });
+            if (!user) {
+                throw new Error('User not found.');
+            }
+            if (user.recoveryCode !== code) {
+                throw new Error('Code is not correct.');
+            }
+            user.password = userService.hashPassword(password);
+            user.recoveryCode = null;
+            user.save();
+            await Token.deleteMany({user: user._id});
+            return res.status(200).send({ message: 'Password has been changed.' });
         } catch (error) {
             return res.status(400).send({ error: error.message });
         }

@@ -14,5 +14,8 @@ router.post('/email_send', roleMiddleware(['USER']), usersController.resendActiv
 router.put('/change_password', roleMiddleware(['USER']), usersController.changeUserPassword);
 router.get('/sessions', roleMiddleware(['USER']), usersController.getUserSessions);
 router.put('/close_session', roleMiddleware(['USER']), usersController.closeSession);
+router.get('/recovery_code', usersController.getForgotPasswordCode);
+router.get('/recovery_validate', usersController.validateRecoveryCode);
+router.put('/change_password_code', usersController.changePasswordByCode);
 
 module.exports = router;
