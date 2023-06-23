@@ -8,33 +8,51 @@ const tokenService = require('./tokenService');
 const UserDto = require('../dto/user-dto');
 
 class UserService {
-    async registration(email, password, phone, user_agent) {
+    async registration(email, password, phone, user_agent, authMethod, name, surname) {
         const candidate_email = await User.findOne({ email });
         if (candidate_email) {
             throw new Error('User with the same email already exists');
         }
-        const hashPassword = this.hashPassword(password);
+        const hashPassword = authMethod === 'email' ? this.hashPassword(password) : null;
         const userRole = await Role.findOne({ value: 'USER' });
         const activationLink = await this.generateActivationLink(email);
-        const user = new User({ email, password: hashPassword, phone, roles: [userRole.value], activationLink, favorites: {men: [], women: []} });
+        const user = new User({ 
+            email, 
+            password: hashPassword, 
+            phone, 
+            roles: [userRole.value], 
+            activationLink, 
+            favorites: {men: [], women: []},
+            authMethod,
+            name: name || null,
+            surname: surname || null
+        });
         const userDto = new UserDto(user);
         const tokens = tokenService.generateTokens({...userDto});
         await tokenService.saveToken(userDto.id, tokens.refreshToken, user_agent);
         await user.save();
-        userDto.phone = phone;
         return { 
             ...tokens,
-            user: {...userDto, name: user.name ? user.name : null, surname: user.surname ? user.surname : null, phone: user.phone ? user.phone : null, favorites: user.favorites},
+            user: {
+                ...userDto, 
+                name: user.name || null, 
+                surname: user.surname || null, 
+                phone: user.phone || null, 
+                favorites: user.favorites, 
+                authMethod: user.authMethod
+            },
         }
     }
-    async login(email, password, isRemember, user_agent) {
+    async login(email, password, isRemember, user_agent, authMethod) {
         const user = await User.findOne({email});
         if (!user) {
             throw new Error('Invalid mail or password');
         }
-        const isPassEquals = await this.comparePasswords(password, user.password);
-        if (!isPassEquals) {
-            throw new Error('Invalid mail or password')
+        if (authMethod === 'email') {
+            const isPassEquals = await this.comparePasswords(password, user.password);
+            if (!isPassEquals) {
+                throw new Error('Invalid mail or password')
+            }
         }
         const userDto = new UserDto(user);
         const tokens = tokenService.generateTokens({ ...userDto });
@@ -43,10 +61,16 @@ class UserService {
         } else {
             await tokenService.saveToken(userDto.id, tokens.refreshToken, user_agent);
         }
-        userDto.phone = user.phone;
         return {
             ...tokens,
-            user: {...userDto, name: user.name ? user.name : null, surname: user.surname ? user.surname : null, phone: user.phone ? user.phone : null, favorites: user.favorites},
+            user: {
+                ...userDto, 
+                name: user.name || null, 
+                surname: user.surname || null, 
+                phone: user.phone || null, 
+                favorites: user.favorites,
+                authMethod: user.authMethod
+            },
         }
     }
     async logout(refreshToken) {
@@ -67,7 +91,14 @@ class UserService {
         const tokens = tokenService.generateTokens({...userDto});
         return {
             accessToken: tokens.accessToken,
-            user: {...userDto, name: user.name ? user.name : null, surname: user.surname ? user.surname : null, phone: user.phone ? user.phone : null, favorites: user.favorites},
+            user: {
+                ...userDto, 
+                name: user.name || null, 
+                surname: user.surname || null, 
+                phone: user.phone || null, 
+                favorites: user.favorites,
+                authMethod: user.authMethod
+            },
             refreshToken
         }
     }

@@ -7,7 +7,7 @@ const Favorites = new Schema({
 
 const User = new Schema({
     email: {type: String, unique: true, required: true},
-    password: {type: String, required: true},
+    password: {type: String},
     phone: {type: String, default: null},
     name: {type: String, default: null},
     surname: {type: String, default: null},
@@ -16,7 +16,8 @@ const User = new Schema({
     emailConfirmationCode: {type: String},
     recoveryCode: {type: String},
     roles: [{type: String, ref: 'Role'}],
-    favorites: {type: Favorites}
+    favorites: {type: Favorites},
+    authMethod: {type: String, required: true}
 })
 
 module.exports = model('User', User);

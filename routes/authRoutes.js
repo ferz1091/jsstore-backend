@@ -11,5 +11,6 @@ router.post('/login', authController.login);
 router.get('/activate/:link', authController.activate);
 router.post('/logout', authController.logout);
 router.get('/refresh', authController.refresh);
+router.post('/google', authController.googleAuth);
 
 module.exports = router;
