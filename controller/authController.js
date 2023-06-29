@@ -94,8 +94,7 @@ class AuthController {
             await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${access_token}`,
-                    'Access-Control-Allow-Origin': 'https://jsstore-frontend.vercel.app'
+                    'Authorization': `Bearer ${access_token}`
                 }
             })
             .then(response => response.json())
