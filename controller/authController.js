@@ -22,7 +22,7 @@ class AuthController {
     async login(req, res) {
         try {
             const { email, password, isRemember } = req.body;
-            const userData = await userService.login(email, password, isRemember, req.headers['user-agent']);
+            const userData = await userService.login(email, password, isRemember, req.headers['user-agent'], 'email');
             if (isRemember) {
                 res.cookie('refreshToken', userData.refreshToken, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: isDev ? 'Lax' : 'None', secure: !isDev });
             }
