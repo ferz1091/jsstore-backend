@@ -57,7 +57,7 @@ class AuthController {
         try {
             const activationLink = req.params.link;
             await userService.activate(activationLink);
-            return res.redirect('http://localhost:5173');
+            return res.redirect('https://jsstore-frontend.vercel.app');
         } catch (e) {
             console.log(e);
             return res.status(400).json({message: e.message});
