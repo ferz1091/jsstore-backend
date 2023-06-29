@@ -79,7 +79,7 @@ class AuthController {
                     code,
                     client_id,
                     client_secret,
-                    redirect_uri: 'http://localhost:5173/authback',
+                    redirect_uri: 'https://jsstore-frontend.vercel.app/#/authback',
                     grant_type: 'authorization_code'
                 })
             })
