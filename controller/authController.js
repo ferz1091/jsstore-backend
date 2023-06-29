@@ -69,7 +69,6 @@ class AuthController {
             const client_secret = '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';
             let access_token;
             let user_info;
-            let testInfo;
             const { code } = req.body;
             if (!code) {
                 throw new Error('Invalid code.');
@@ -85,9 +84,7 @@ class AuthController {
                 })
             })
             .then(response => response.json())
-            .then(body => {
-                testInfo = body;
-                access_token = body.access_token});
+            .then(body => access_token = body.access_token);
             if (!access_token) {
                 throw new Error('Something goes wrong');
             }
@@ -114,7 +111,7 @@ class AuthController {
                 return res.status(200).send(userData);
             }
         } catch (error) {
-            return res.status(400).send({message: error.message, info: testInfo})
+            return res.status(400).send({message: error.message})
         }
     }
 }
