@@ -194,6 +194,32 @@ class ProductService {
         article += prods.length + 1;
         return article;
     }
+    async getProductsByString(gender, searchString, page) {
+        const instance = Product[gender];
+        const regex = new RegExp(searchString, 'i');
+        const dataParam = [{
+            $match: {
+                $or: [
+                    { category: regex },
+                    { name: regex },
+                    { brand: regex },
+                    { type: regex }
+                ]
+            }
+        },
+        { $skip: (page - 1) * 20 },
+        { $limit: 20 }];
+        const countParam = {
+            $or: [
+                { name: regex },
+                { brand: regex },
+                { type: regex }
+            ]
+        }
+        const data = await instance.aggregate(dataParam);
+        const totalCount = await instance.countDocuments(countParam);
+        return {data, totalCount};
+    }
 }
 
 module.exports = new ProductService();

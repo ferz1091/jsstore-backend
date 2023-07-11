@@ -18,19 +18,73 @@ class ProductController {
             const product = new Product[type]({
                 ...prod,
                 article,
-                date: new Date(), 
-                isSale: { oldValue: 0, flag: false }, 
+                date: new Date(),
                 rating: 0, 
                 rateAmount: 0
             });
             await product.save();
-            return res.status(200).json({message: 'Product has been added.', link: `/product/${type}/${product._id}`});
+            return res.status(200).json({ message: 'Product has been added.', link: `/product/${type}/${product._id}` });
         } catch (e) {
-            console.log(e);
             req.files.forEach(file => {
-                fs.rm(`./images/${file.filename}`);
+                fs.rm(`./images/${file.filename}`, (err) => {
+                    console.log(err);
+                });
             })
-            return res.status(400).json({message: 'Post error'});
+            return res.status(400).send({message: 'Post error'});
+        }
+    }
+    async editProduct(req, res) {
+        try {
+            const body = JSON.parse(req.body.product);
+            const {prod, type, title, oldImages, newTitle} = body;
+            const product = await Product[type].findOne({article: prod.article});
+            let imagesToDelete = [];
+            for (let img of product.images) {
+                if (!oldImages.some(image => image.path === img.path)) {
+                    imagesToDelete.push(img.path);
+                }
+            }
+            if (imagesToDelete.length) {
+                for (let img of imagesToDelete) {
+                    product.images.splice(product.images.findIndex(image => image.path === img), 1);
+                }
+            }
+            if (req.files.length) {
+                product.images = product.images.concat(req.files.map((file, index) => {
+                    return { path: file.destination + file.filename, title: false }
+                }));
+            }
+            if (newTitle) {
+                product.images = product.images.map((image, index) => {
+                    if (title === index) {
+                        return {
+                            ...image,
+                            title: true
+                        }
+                    } else {
+                        return {
+                            ...image,
+                            title: false
+                        }
+                    }
+                })
+            }
+            if (!product.images.some(image => image.title)) {
+                product.images[0].title = true;
+            }
+            Object.assign(product, prod);
+            await product.save();
+            if (imagesToDelete.length) {
+                imagesToDelete.forEach(img => {
+                    fs.rm(`./${img}`, err => {
+                        console.log(err);
+                    });
+                });
+            }
+            return res.status(200).json({ message: 'Product has been added.', link: `/product/${type}/${product._id}` });
+        } catch (error) {
+            console.log(error);
+            return res.status(400).send({message: error.message})
         }
     }
     async getProducts (req, res) {
@@ -473,6 +527,24 @@ class ProductController {
             res.status(200).send({men: [...men], women: [...women]});
         } catch (e) {
             res.status(400).send({error: e.message})
+        }
+    }
+    async getProductsByString(req, res) {
+        try {
+            const {gender, searchString, currentPage} = req.query;
+            let page = 1;
+            if (!gender) {
+                throw new Error('Must contain query GENDER');
+            }
+            if (currentPage && currentPage < 1) {
+                return res.status(400).send({ error: 'Page must be greater than 1' });
+            } else if (currentPage) {
+                page = currentPage;
+            }
+            const { data, totalCount } = await productService.getProductsByString(gender, searchString, currentPage);
+            return res.status(200).send({ totalCount, data, totalPages: Math.ceil(totalCount / 20), page: Number(page) });
+        } catch (error) {
+            return res.status(400).send({error: error.message});
         }
     }
 }

@@ -18,5 +18,7 @@ router.post('/comment_edit', roleMiddleware(['USER']), productController.editRat
 router.put('/addtofav', roleMiddleware(['USER']), productController.addToFavorites);
 router.put('/removefromfav', roleMiddleware(['USER']), productController.removeFromFavorites);
 router.get('/getfavorites', roleMiddleware(['USER']), productController.getUserFavorites);
+router.get('/getByString', roleMiddleware(['ADMIN', 'OWNER']), productController.getProductsByString);
+router.put('/edit', fileMiddleware(['ADMIN', 'OWNER']), productController.editProduct);
 
 module.exports = router;
